@@ -84,11 +84,26 @@ if (-not $NoInstall) {
     Write-Host "Dependencies installed."
 }
 
-# Start Streamlit
+# Create static directory (required by FastAPI)
+if (-not (Test-Path (Join-Path $ScriptDir "static"))) {
+    New-Item -ItemType Directory -Path (Join-Path $ScriptDir "static") | Out-Null
+}
+
+# Start FastAPI (uvicorn)
 Write-Host ""
 Write-Host "Starting Image Classifier..."
-Write-Host "Browser will open at http://localhost:8501"
+Write-Host "Browser will open at http://localhost:8000"
 Write-Host "Press Ctrl+C to stop."
 Write-Host ""
 
-& $VenvPython -m streamlit run app.py
+# ローディング画面を即座に開く（サーバー起動前でも表示できる）
+# loading.html が 1 秒ごとにサーバーをポーリングし，応答があったら自動リダイレクトする
+# $PSScriptRoot はスクリプトファイルのディレクトリを確実に返す組み込み変数
+$LoadingPage = Join-Path $PSScriptRoot "static\loading.html"
+if (Test-Path $LoadingPage) {
+    Start-Process $LoadingPage
+} else {
+    Write-Host "Warning: ローディング画面が見つかりません: $LoadingPage" -ForegroundColor Yellow
+}
+
+& $VenvPython -m uvicorn api:app --host 0.0.0.0 --port 8000 --log-level warning

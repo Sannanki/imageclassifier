@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Image Classifier - 起動中</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+}
+.box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.ring {
+  width: 52px;
+  height: 52px;
+  border: 4px solid rgba(59,130,246,.2);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin .85s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+h1   { font-size: 22px; font-weight: 600; }
+.msg { font-size: 14px; color: #94a3b8; }
+.sub { font-size: 12px; color: #64748b; max-width: 340px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="ring"></div>
+  <h1>🖼 Image Classifier</h1>
+  <p class="msg" id="msg">システムを起動中<span id="dot"></span></p>
+  <p class="sub" id="sub">PyTorch・ML ライブラリをロード中です．<br>初回起動は数十秒かかる場合があります．</p>
+</div>
+<script>
+// ドットアニメーション
+const dots = ['', '.', '..', '...'];
+let di = 0;
+setInterval(() => { document.getElementById('dot').textContent = dots[++di % 4]; }, 500);
+
+// no-cors fetch: CORS 設定不要でサーバーの応答を検知できる
+// サーバーが UP → Promise が resolve（opaque response）
+// サーバーが DOWN → TypeError（ECONNREFUSED）で reject
+async function waitForServer() {
+  try {
+    await fetch('http://localhost:8000/', { mode: 'no-cors' });
+    document.getElementById('msg').textContent = '起動完了！アプリを開きます...';
+    document.getElementById('sub').textContent = '';
+    window.location.href = 'http://localhost:8000/';
+  } catch (_) {
+    setTimeout(waitForServer, 1000);
+  }
+}
+
+waitForServer();
+</script>
+</body>
+</html>

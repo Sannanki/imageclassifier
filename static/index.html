@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Classifier</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sidebar: 230px;
+  --primary: #3b82f6;
+  --primary-h: #2563eb;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger:  #ef4444;
+  --bg:      #0f172a;
+  --surf:    #1e293b;
+  --surf2:   #334155;
+  --text:    #e2e8f0;
+  --muted:   #94a3b8;
+  --border:  #334155;
+  --r:       6px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: var(--sidebar);
+  min-width: var(--sidebar);
+  background: var(--surf);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#sidebar h1 {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.status-panel {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.status-row:last-child { margin-bottom: 0; }
+.badge {
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.badge-ok  { background: rgba(34,197,94,.2);  color: var(--success); }
+.badge-ng  { background: rgba(245,158,11,.2); color: var(--warning); }
+
+nav { padding: 6px 0; flex: 1; }
+.nav-item {
+  display: block;
+  padding: 9px 16px;
+  color: var(--muted);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  font-size: 13px;
+  transition: background .12s, color .12s;
+  user-select: none;
+}
+.nav-item:hover { background: var(--surf2); color: var(--text); }
+.nav-item.active {
+  background: rgba(59,130,246,.1);
+  color: var(--primary);
+  border-left-color: var(--primary);
+}
+
+/* ── MAIN ── */
+#main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px;
+}
+.page { display: none; }
+.page.active { display: block; }
+
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+p, .desc { color: var(--muted); margin-bottom: 14px; font-size: 13px; }
+
+/* ── CARD ── */
+.card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--r);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background .12s;
+  text-decoration: none;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary  { background: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled)  { background: var(--primary-h); }
+.btn-secondary { background: var(--surf2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover:not(:disabled) { background: #475569; }
+.btn-danger   { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled)   { background: #dc2626; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+/* ── INPUT ── */
+input[type=text] {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: none;
+}
+input[type=text]:focus { border-color: var(--primary); }
+
+/* ── CATEGORY ROW ── */
+.cat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cat-row input { flex: 1; }
+
+/* ── DROPZONE ── */
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--r);
+  padding: 22px;
+  text-align: center;
+  color: var(--muted);
+  cursor: pointer;
+  position: relative;
+  transition: border-color .15s, background .15s;
+}
+.dropzone input[type=file] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.dropzone:hover, .dropzone.over {
+  border-color: var(--primary);
+  background: rgba(59,130,246,.05);
+  color: var(--text);
+}
+.drop-icon { font-size: 26px; margin-bottom: 6px; }
+.drop-text { font-size: 13px; }
+
+/* ── UPLOAD SECTION ── */
+.up-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* ── PROGRESS ── */
+.prog-wrap {
+  width: 100%;
+  height: 8px;
+  background: var(--surf2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.prog-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+
+/* ── PROBABILITY ── */
+.prob-item { margin-bottom: 8px; }
+.prob-head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+.prob-bar  { height: 18px; background: var(--surf2); border-radius: 3px; overflow: hidden; }
+.prob-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width .3s; }
+
+/* ── PREDICT CARD ── */
+.pred-card { display: grid; grid-template-columns: 160px 1fr auto; gap: 16px; align-items: start; }
+.pred-thumb { width: 100%; border-radius: var(--r); display: block; }
+
+/* ── ALERTS ── */
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--r);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.alert-info    { background: rgba(59,130,246,.1);  color: #93c5fd; border: 1px solid rgba(59,130,246,.3); }
+.alert-success { background: rgba(34,197,94,.1);   color: #86efac; border: 1px solid rgba(34,197,94,.3); }
+.alert-danger  { background: rgba(239,68,68,.1);   color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+.alert-warning { background: rgba(245,158,11,.1);  color: #fcd34d; border: 1px solid rgba(245,158,11,.3); }
+
+/* ── TOAST ── */
+#toast-wrap {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 16px;
+  font-size: 13px;
+  max-width: 300px;
+  animation: fadeIn .2s ease;
+}
+.toast-ok  { border-left: 3px solid var(--success); }
+.toast-err { border-left: 3px solid var(--danger); }
+.toast-inf { border-left: 3px solid var(--primary); }
+@keyframes fadeIn { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:none; } }
+
+/* ── SPINNER ── */
+.spin {
+  display: inline-block;
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: rot .7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+
+/* ── COUNT TABLE ── */
+.ct { width: 100%; border-collapse: collapse; }
+.ct td { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.ct td:last-child { text-align: right; color: var(--muted); }
+
+.mt1 { margin-top: 6px; }
+.mt2 { margin-top: 10px; }
+.mt3 { margin-top: 16px; }
+.muted { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <h1>🖼 Image Classifier</h1>
+  <div class="status-panel">
+    <div class="status-row">
+      <span>クラス</span>
+      <span id="s-cats" style="color:var(--text);font-size:11px">-</span>
+    </div>
+    <div class="status-row">
+      <span>モデル</span>
+      <span id="s-model" class="badge badge-ng">未学習</span>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-item active" data-p="upload">📂 Upload Training Images</div>
+    <div class="nav-item" data-p="train">🏋 Train Model</div>
+    <div class="nav-item" data-p="predict">🔍 Predict</div>
+    <div class="nav-item" data-p="saliency">🗺 Saliency Map Analysis</div>
+    <div class="nav-item" data-p="save">💾 Save Model</div>
+    <div class="nav-item" data-p="load">📤 Load Model</div>
+  </nav>
+</aside>
+
+<!-- MAIN -->
+<main id="main">
+
+<!-- UPLOAD -->
+<div id="page-upload" class="page active">
+  <h2>Upload Training Images</h2>
+  <div class="card">
+    <h3>クラス名の設定</h3>
+    <p>分類するクラス名を入力してください（最低 2 クラス必要です）．</p>
+    <div id="cat-inputs"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="addCat()">＋ クラスを追加</button>
+      <button class="btn btn-primary"   onclick="confirmCats()">クラス名を確定する</button>
+    </div>
+  </div>
+  <div id="upload-zones"></div>
+  <div id="del-all-wrap" style="display:none">
+    <hr>
+    <button class="btn btn-danger" onclick="deleteAll()">🗑️ 全クラスの画像をまとめて削除</button>
+  </div>
+</div>
+
+<!-- TRAIN -->
+<div id="page-train" class="page">
+  <h2>Train Model</h2>
+  <div class="card">
+    <h3>アップロード枚数</h3>
+    <table class="ct" id="train-counts"></table>
+  </div>
+  <div class="card">
+    <h3>学習方式</h3>
+    <p>全層: 精度が出やすいが時間がかかる　／　最終層のみ: 高速・過学習しにくい</p>
+    <div class="btn-row">
+      <button class="btn btn-primary"   id="btn-full" onclick="startTrain(false)">全層トレーニング</button>
+      <button class="btn btn-secondary" id="btn-fc"   onclick="startTrain(true)">最終層のみトレーニング</button>
+    </div>
+  </div>
+  <div class="card" id="prog-card" style="display:none">
+    <div id="prog-msg"></div>
+    <div class="prog-wrap mt1"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="muted mt1" id="prog-label"></div>
+  </div>
+  <div id="train-result" style="display:none"></div>
+</div>
+
+<!-- PREDICT -->
+<div id="page-predict" class="page">
+  <h2>Predict Image Class</h2>
+  <div class="card">
+    <div class="dropzone" id="pred-dz">
+      <input type="file" id="pred-input" accept=".png,.jpg,.jpeg" multiple
+             onchange="runPredict(this.files)">
+      <div class="drop-icon">🖼</div>
+      <div class="drop-text">画像をドロップ または クリックして選択（複数可）</div>
+    </div>
+  </div>
+  <div id="pred-results"></div>
+</div>
+
+<!-- SALIENCY -->
+<div id="page-saliency" class="page">
+  <h2>Saliency Map Analysis</h2>
+  <p>予測に最も影響を与えた領域を可視化します．</p>
+  <div id="sal-content">
+    <div class="alert alert-info">
+      先に Predict ページで予測を実行し，「Saliency Map」ボタンを押してください．
+    </div>
+  </div>
+</div>
+
+<!-- SAVE -->
+<div id="page-save" class="page">
+  <h2>Save Model</h2>
+  <p>学習済みモデルをローカルにダウンロードします．</p>
+  <div class="card">
+    <div id="save-status"></div>
+    <a id="save-link" href="/api/model/download" class="btn btn-primary" download
+       style="display:none">⬇ Download Model</a>
+  </div>
+</div>
+
+<!-- LOAD -->
+<div id="page-load" class="page">
+  <h2>Load Model</h2>
+  <p>保存済みモデルファイル（.pth）を読み込んで復元します．</p>
+  <div class="card">
+    <div class="dropzone" id="load-dz">
+      <input type="file" id="load-input" accept=".pth"
+             onchange="loadModel(this.files)">
+      <div class="drop-icon">📦</div>
+      <div class="drop-text">モデルファイル（.pth）をドロップ または クリックして選択</div>
+    </div>
+    <div id="load-status" class="mt2"></div>
+  </div>
+</div>
+
+</main>
+<div id="toast-wrap"></div>
+
+<script>
+'use strict';
+
+// ── state ──────────────────────────────────────────────────────────────────────
+let G = {
+  categories: ['class_1', 'class_2'],
+  training_complete: false,
+  training_status: null,
+};
+let predictions = [];  // server results cache
+let pollTimer = null;
+
+// ── navigation ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => go(el.dataset.p));
+});
+
+function go(p) {
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.dataset.p === p));
+  document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-' + p));
+  if (p === 'train')   refreshTrainPage();
+  if (p === 'upload')  refreshZones();
+  if (p === 'save')    refreshSave();
+}
+
+// ── toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, kind = 'inf', ms = 3200) {
+  const w = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = `toast toast-${kind}`;
+  t.textContent = msg;
+  w.appendChild(t);
+  setTimeout(() => t.remove(), ms);
+}
+
+// ── fetch helper ───────────────────────────────────────────────────────────────
+async function req(method, path, body, isForm = false) {
+  const opts = { method };
+  if (body && !isForm) {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify(body);
+  } else if (body && isForm) {
+    opts.body = body;
+  }
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(e.detail || r.statusText);
+  }
+  return r.json();
+}
+
+// ── sidebar status ─────────────────────────────────────────────────────────────
+function refreshSidebar() {
+  document.getElementById('s-cats').textContent = G.categories.join(', ');
+  const b = document.getElementById('s-model');
+  if (G.training_complete) {
+    b.textContent = '学習済み';
+    b.className = 'badge badge-ok';
+  } else {
+    b.textContent = '未学習';
+    b.className = 'badge badge-ng';
+  }
+}
+
+// ── load state ─────────────────────────────────────────────────────────────────
+async function loadState() {
+  try {
+    G = await req('GET', '/api/state');
+    refreshSidebar();
+  } catch(e) { console.error(e); }
+}
+
+// ══ UPLOAD PAGE ════════════════════════════════════════════════════════════════
+
+function renderCatInputs() {
+  const d = document.getElementById('cat-inputs');
+  d.innerHTML = '';
+  G.categories.forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    row.innerHTML = `
+      <input type="text" value="${esc(c)}" placeholder="クラス ${i+1}" data-i="${i}">
+      ${G.categories.length > 2
+        ? `<button class="btn btn-secondary btn-sm" onclick="removeCat(${i})">✕</button>`
+        : ''}`;
+    d.appendChild(row);
+  });
+}
+
+function addCat() {
+  const vals = [...document.querySelectorAll('#cat-inputs input')].map(el => el.value.trim() || el.placeholder);
+  vals.push(`class_${vals.length + 1}`);
+  G.categories = vals;
+  renderCatInputs();
+}
+
+function removeCat(i) {
+  const vals = [...document.querySelectorAll('#cat-inputs input')].map(el => el.value.trim() || el.placeholder);
+  vals.splice(i, 1);
+  if (vals.length < 2) return;
+  G.categories = vals;
+  renderCatInputs();
+}
+
+async function confirmCats() {
+  const cats = [...new Set(
+    [...document.querySelectorAll('#cat-inputs input')]
+      .map(el => el.value.trim()).filter(Boolean)
+  )];
+  if (cats.length < 2) { toast('2クラス以上入力してください', 'err'); return; }
+  try {
+    const res = await req('POST', '/api/categories', { categories: cats });
+    G.categories = res.categories;
+    if (res.reset) { G.training_complete = false; toast('クラスが変更されたためモデルをリセットしました', 'inf'); }
+    else toast('クラス名を確定しました', 'ok');
+    refreshSidebar();
+    renderCatInputs();
+    await refreshZones();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function refreshZones() {
+  const container = document.getElementById('upload-zones');
+  container.innerHTML = '';
+  let total = 0;
+
+  for (const cat of G.categories) {
+    let files = [];
+    try { files = (await req('GET', `/api/images/${encodeURIComponent(cat)}`)).files; } catch(_) {}
+    total += files.length;
+
+    const sec = document.createElement('div');
+    sec.className = 'card';
+    sec.innerHTML = `
+      <div class="up-header">
+        <span style="font-weight:500">「${esc(cat)}」の画像
+          <span class="muted">（${files.length} 枚）</span>
+        </span>
+        ${files.length > 0
+          ? `<button class="btn btn-danger btn-sm" onclick="delCat('${esc(cat)}')">🗑️ 削除</button>`
+          : ''}
+      </div>
+      <div class="dropzone" id="dz-${esc(cat)}">
+        <input type="file" accept=".png,.jpg,.jpeg" multiple
+               data-cat="${esc(cat)}" onchange="uploadFiles(this)">
+        <div class="drop-icon">📷</div>
+        <div class="drop-text">画像をドロップ または クリックして選択</div>
+      </div>`;
+    container.appendChild(sec);
+    setupDZ(`dz-${cat}`);
+  }
+
+  document.getElementById('del-all-wrap').style.display = total > 0 ? 'block' : 'none';
+}
+
+async function uploadFiles(input) {
+  const cat = input.dataset.cat;
+  if (!input.files.length) return;
+  const fd = new FormData();
+  for (const f of input.files) fd.append('files', f);
+  try {
+    const res = await req('POST', `/api/upload/${encodeURIComponent(cat)}`, fd, true);
+    toast(`${res.count} 枚追加しました`, 'ok');
+    await refreshZones();
+  } catch(e) { toast('アップロード失敗: ' + e.message, 'err'); }
+  input.value = '';
+}
+
+async function delCat(cat) {
+  if (!confirm(`「${cat}」の画像をすべて削除しますか？`)) return;
+  try {
+    const r = await req('DELETE', `/api/images/${encodeURIComponent(cat)}`);
+    toast(`${r.deleted} 枚削除しました`, 'ok');
+    G.training_complete = false;
+    refreshSidebar();
+    await refreshZones();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function deleteAll() {
+  if (!confirm('全クラスの画像を削除しますか？')) return;
+  try {
+    const r = await req('DELETE', '/api/images');
+    toast(`${r.deleted} 枚削除しました`, 'ok');
+    G.training_complete = false;
+    refreshSidebar();
+    await refreshZones();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ══ TRAIN PAGE ══════════════════════════════════════════════════════════════════
+
+async function refreshTrainPage() {
+  const tbl = document.getElementById('train-counts');
+  tbl.innerHTML = '';
+  for (const cat of G.categories) {
+    try {
+      const res = await req('GET', `/api/images/${encodeURIComponent(cat)}`);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${esc(cat)}</td><td>${res.files.length} 枚</td>`;
+      tbl.appendChild(tr);
+    } catch(_) {}
+  }
+  if (G.training_status === 'running') { setTrainUI(true); startPoll(); }
+}
+
+async function startTrain(fcOnly) {
+  try {
+    await req('POST', '/api/train', { fc_only: fcOnly, epochs: 10 });
+    setTrainUI(true);
+    document.getElementById('train-result').style.display = 'none';
+    startPoll();
+  } catch(e) { toast('学習開始失敗: ' + e.message, 'err'); }
+}
+
+function setTrainUI(running) {
+  document.getElementById('btn-full').disabled = running;
+  document.getElementById('btn-fc').disabled   = running;
+  document.getElementById('prog-card').style.display = running ? 'block' : 'none';
+}
+
+function startPoll() {
+  if (pollTimer) return;
+  pollTimer = setInterval(poll, 1000);
+}
+
+async function poll() {
+  try {
+    const s = await req('GET', '/api/train/status');
+    document.getElementById('prog-msg').innerHTML =
+      `<span class="spin"></span>${esc(s.msg)}`;
+    if (s.total > 0) {
+      const pct = Math.round(s.epoch / s.total * 100);
+      document.getElementById('prog-fill').style.width = pct + '%';
+      document.getElementById('prog-label').textContent = `Epoch ${s.epoch} / ${s.total}`;
+    }
+    if (s.status === 'complete') {
+      clearInterval(pollTimer); pollTimer = null;
+      setTrainUI(false);
+      document.getElementById('prog-fill').style.width = '100%';
+      document.getElementById('prog-msg').textContent = '学習完了';
+      G.training_complete = true;
+      refreshSidebar();
+      toast('学習が完了しました！', 'ok');
+      document.getElementById('train-result').innerHTML =
+        '<div class="alert alert-success">✅ 学習完了</div>';
+      document.getElementById('train-result').style.display = 'block';
+    } else if (s.status === 'error') {
+      clearInterval(pollTimer); pollTimer = null;
+      setTrainUI(false);
+      toast('学習エラー: ' + s.error, 'err');
+    }
+  } catch(_) {}
+}
+
+// ══ PREDICT PAGE ════════════════════════════════════════════════════════════════
+
+async function runPredict(files) {
+  if (!files || !files.length) return;
+  if (!G.training_complete) { toast('先にモデルを学習してください', 'err'); return; }
+  const out = document.getElementById('pred-results');
+  out.innerHTML = '<div class="alert alert-info"><span class="spin"></span>推論中...</div>';
+  const fd = new FormData();
+  for (const f of files) fd.append('files', f);
+  try {
+    const res = await req('POST', '/api/predict', fd, true);
+    predictions = res.results;
+    renderPredResults(res.results);
+    document.getElementById('pred-input').value = '';
+  } catch(e) {
+    out.innerHTML = `<div class="alert alert-danger">エラー: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderPredResults(results) {
+  const out = document.getElementById('pred-results');
+  out.innerHTML = '';
+  results.forEach(r => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const probs = Object.entries(r.probabilities).sort((a,b) => b[1]-a[1]);
+    const probsHtml = probs.map(([cat, p]) => {
+      const pct = (p * 100).toFixed(1);
+      return `<div class="prob-item">
+        <div class="prob-head"><span>${esc(cat)}</span><span>${pct}%</span></div>
+        <div class="prob-bar"><div class="prob-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+    card.innerHTML = `
+      <div class="pred-card">
+        <div>
+          <img class="pred-thumb" src="data:image/png;base64,${r.thumbnail}" alt="${esc(r.filename)}">
+          <div class="muted mt1" style="word-break:break-all">${esc(r.filename)}</div>
+        </div>
+        <div>${probsHtml}</div>
+        <div>
+          <button class="btn btn-secondary btn-sm" onclick="showSaliency(${r.id})">
+            🗺 Saliency Map
+          </button>
+        </div>
+      </div>`;
+    out.appendChild(card);
+  });
+}
+
+// ══ SALIENCY PAGE ════════════════════════════════════════════════════════════════
+
+async function showSaliency(id) {
+  const d = document.getElementById('sal-content');
+  d.innerHTML = '<div class="alert alert-info"><span class="spin"></span>Saliency Map を計算中...</div>';
+  go('saliency');
+  try {
+    const res = await req('GET', `/api/saliency/${id}`);
+    d.innerHTML = `
+      <div class="card">
+        <h3>Feature Importance: "${esc(res.predicted_class)}"</h3>
+        <img src="data:image/png;base64,${res.image_b64}"
+             style="max-width:400px;border-radius:6px;display:block;margin:12px 0"
+             alt="Saliency Map">
+        <div class="muted">← 影響小　　　　　影響大 →</div>
+        <div class="alert alert-info mt2">
+          赤・黄・白の領域が予測に最も影響した部分，黒い領域は影響が小さい部分です．
+        </div>
+      </div>`;
+  } catch(e) {
+    d.innerHTML = `<div class="alert alert-danger">エラー: ${esc(e.message)}</div>`;
+  }
+}
+
+// ══ SAVE PAGE ════════════════════════════════════════════════════════════════════
+
+function refreshSave() {
+  const st = document.getElementById('save-status');
+  const lk = document.getElementById('save-link');
+  if (G.training_complete) {
+    st.innerHTML = `<div class="alert alert-info">クラス: ${esc(G.categories.join(', '))}</div>`;
+    lk.style.display = 'inline-flex';
+  } else {
+    st.innerHTML = '<div class="alert alert-warning">先にモデルの学習を完了してください．</div>';
+    lk.style.display = 'none';
+  }
+}
+
+// ══ LOAD PAGE ════════════════════════════════════════════════════════════════════
+
+async function loadModel(files) {
+  if (!files || !files.length) return;
+  const st = document.getElementById('load-status');
+  st.innerHTML = '<div class="alert alert-info"><span class="spin"></span>読み込み中...</div>';
+  const fd = new FormData();
+  fd.append('file', files[0]);
+  try {
+    const res = await req('POST', '/api/model/load', fd, true);
+    G.training_complete = true;
+    G.categories = res.categories;
+    refreshSidebar();
+    renderCatInputs();
+    st.innerHTML = `<div class="alert alert-success">
+      ✅ 読み込み完了：クラス ${esc(res.categories.join(', '))}
+    </div>`;
+    toast('モデルを読み込みました', 'ok');
+    document.getElementById('load-input').value = '';
+  } catch(e) {
+    st.innerHTML = `<div class="alert alert-danger">エラー: ${esc(e.message)}</div>`;
+  }
+}
+
+// ── drag-drop helper ───────────────────────────────────────────────────────────
+function setupDZ(id, handler) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); });
+  el.addEventListener('dragleave', e => {
+    if (!el.contains(e.relatedTarget)) el.classList.remove('over');
+  });
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    el.classList.remove('over');
+    const files = e.dataTransfer.files;
+    if (handler) { handler(files); return; }
+    const inp = el.querySelector('input[type=file]');
+    if (inp && files.length) {
+      try {
+        const dt = new DataTransfer();
+        for (const f of files) dt.items.add(f);
+        inp.files = dt.files;
+        inp.dispatchEvent(new Event('change'));
+      } catch(_) {}
+    }
+  });
+}
+
+// ── util ───────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── init ───────────────────────────────────────────────────────────────────────
+async function init() {
+  await loadState();
+  renderCatInputs();
+  await refreshZones();
+  setupDZ('pred-dz', files => runPredict(files));
+  setupDZ('load-dz', files => loadModel(files));
+  if (G.training_status === 'running') { setTrainUI(true); startPoll(); }
+}
+
+init();
+</script>
+</body>
+</html>

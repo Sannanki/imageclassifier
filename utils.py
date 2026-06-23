@@ -1,33 +1,37 @@
 import os
 from PIL import Image
+import torch
+import torchvision.transforms as transforms
+import numpy as np
 
-_IMG_TRANSFORM = None
+_NORMALIZE = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                   std=[0.229, 0.224, 0.225])
 
+# 学習用：ランダム拡張で汎化性能を向上させる
+TRAIN_TRANSFORM = transforms.Compose([
+    transforms.RandomResizedCrop(224, scale=(0.75, 1.0)),
+    transforms.RandomHorizontalFlip(),
+    transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2, hue=0.05),
+    transforms.RandomRotation(15),
+    transforms.ToTensor(),
+    _NORMALIZE,
+])
 
-def get_transform():
-    """前処理用トランスフォーム（transforms.Compose）を遅延ロードし、キャッシュして返す．"""
-    global _IMG_TRANSFORM
-    if _IMG_TRANSFORM is None:
-        import torchvision.transforms as transforms
-        _IMG_TRANSFORM = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            # ImageNet 統計値で正規化：事前学習済み重みと入力分布を合わせるために必須
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
-        ])
-    return _IMG_TRANSFORM
+# 推論・評価用：拡張なしで決定的に変換する
+IMG_TRANSFORM = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    _NORMALIZE,
+])
 
 
 def get_device():
     """利用可能な最適なデバイス（CUDA, MPS, CPU）を返す．"""
-    import torch
     if torch.cuda.is_available():
         return torch.device('cuda')
     elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
         return torch.device('mps')
     return torch.device('cpu')
-
 
 
 
@@ -86,5 +90,17 @@ def preprocess_image(image):
     - Normalize: ImageNet の平均・分散で正規化（事前学習済み重みと合わせるため必須）
     - unsqueeze(0): バッチ次元を追加して (1, 3, 224, 224) に整形
     """
-    return get_transform()(image).unsqueeze(0)
+    return IMG_TRANSFORM(image).unsqueeze(0)
+
+
+def apply_hot_colormap(saliency: np.ndarray) -> np.ndarray:
+    """正規化済み [0, 1] の 2D 配列を hot カラーマップの RGB 画像配列に変換する．
+
+    matplotlib 不使用で numpy のみにより 'hot' カラーマップを再現する．
+    0→黒，0.33→赤，0.67→黄，1.0→白 のグラデーションになる．
+    """
+    r = np.clip(saliency * 3,     0, 1)
+    g = np.clip(saliency * 3 - 1, 0, 1)
+    b = np.clip(saliency * 3 - 2, 0, 1)
+    return (np.stack([r, g, b], axis=2) * 255).astype(np.uint8)
 

@@ -54,11 +54,19 @@ if [ "$NO_INSTALL" = false ]; then
     echo "Dependencies installed."
 fi
 
-# Start Streamlit
+# Create static directory (required by FastAPI)
+mkdir -p static
+
+# Start FastAPI (uvicorn)
 echo ""
 echo "Starting Image Classifier..."
-echo "Browser will open at http://localhost:8501"
+echo "Browser will open at http://localhost:8000"
 echo "Press Ctrl+C to stop."
 echo ""
 
-"$VENV_PYTHON" -m streamlit run app.py
+# ローディング画面を即座に開く（サーバー起動前でも表示できる）
+# loading.html が 1 秒ごとにサーバーをポーリングし，応答があったら自動リダイレクトする
+LOADING="$SCRIPT_DIR/static/loading.html"
+xdg-open "$LOADING" 2>/dev/null || open "$LOADING" 2>/dev/null || true
+
+"$VENV_PYTHON" -m uvicorn api:app --host 0.0.0.0 --port 8000 --log-level warning
