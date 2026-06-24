@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sannanki LLC
+
 import copy
 import torch
 import torch.nn as nn

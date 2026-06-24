@@ -189,6 +189,33 @@ input[type=text]:focus { border-color: var(--primary); }
   margin-bottom: 8px;
 }
 
+/* ── THUMBNAIL STRIP ── */
+.thumb-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.thumb-strip img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.thumb-more {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surf2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* ── PROGRESS ── */
 .prog-wrap {
   width: 100%;
@@ -298,6 +325,9 @@ input[type=text]:focus { border-color: var(--primary); }
     <div class="nav-item" data-p="save">💾 Save Model</div>
     <div class="nav-item" data-p="load">📤 Load Model</div>
   </nav>
+  <div style="padding:10px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);">
+    © 2026 Sannanki LLC
+  </div>
 </aside>
 
 <!-- MAIN -->
@@ -531,6 +561,16 @@ async function refreshZones() {
     try { files = (await req('GET', `/api/images/${encodeURIComponent(cat)}`)).files; } catch(_) {}
     total += files.length;
 
+    const MAX_THUMBS = 10;
+    const shown = files.slice(0, MAX_THUMBS);
+    const moreCount = files.length - shown.length;
+    const thumbsHtml = shown.map(f =>
+      `<img src="/api/images/${encodeURIComponent(cat)}/${encodeURIComponent(f)}"
+            title="${esc(f)}" loading="lazy">`
+    ).join('') + (moreCount > 0
+      ? `<div class="thumb-more">+${moreCount}</div>`
+      : '');
+
     const sec = document.createElement('div');
     sec.className = 'card';
     sec.innerHTML = `
@@ -547,7 +587,8 @@ async function refreshZones() {
                data-cat="${esc(cat)}" onchange="uploadFiles(this)">
         <div class="drop-icon">📷</div>
         <div class="drop-text">画像をドロップ または クリックして選択</div>
-      </div>`;
+      </div>
+      ${files.length > 0 ? `<div class="thumb-strip">${thumbsHtml}</div>` : ''}`;
     container.appendChild(sec);
     setupDZ(`dz-${cat}`);
   }
@@ -680,7 +721,7 @@ function renderPredResults(results) {
   results.forEach(r => {
     const card = document.createElement('div');
     card.className = 'card';
-    const probs = Object.entries(r.probabilities).sort((a,b) => b[1]-a[1]);
+    const probs = Object.entries(r.probabilities);
     const probsHtml = probs.map(([cat, p]) => {
       const pct = (p * 100).toFixed(1);
       return `<div class="prob-item">

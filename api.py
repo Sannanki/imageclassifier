@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sannanki LLC
+
 import base64
 import copy
 import io
@@ -106,6 +109,17 @@ def get_images(category: str):
     if category not in _s.categories:
         raise HTTPException(404, 'カテゴリが見つかりません')
     return {'category': category, 'files': list_images(category)}
+
+
+@app.get('/api/images/{category}/{filename}')
+def get_image_file(category: str, filename: str):
+    if category not in _s.categories:
+        raise HTTPException(404, 'カテゴリが見つかりません')
+    safe_name = os.path.basename(filename)
+    path = os.path.join('uploads', category, safe_name)
+    if not os.path.isfile(path):
+        raise HTTPException(404, '画像が見つかりません')
+    return FileResponse(path)
 
 
 @app.post('/api/upload/{category}')
