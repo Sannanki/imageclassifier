@@ -252,13 +252,13 @@ Train Model ページでは現在の枚数が表示されます．
 ```
 PetClassifier/
 ├── api.py              # FastAPI バックエンド・全 API エンドポイント
+├── LICENSE             # ライセンスファイル
 ├── model.py            # ResNet-18定義・学習ループ・量子化
 ├── utils.py            # 画像前処理・ファイル保存・ディレクトリ管理
 ├── requirements.txt    # 依存パッケージ一覧（Win/Mac/Linux共通）
 ├── start.ps1           # Windows 起動スクリプト（PowerShell）
 ├── start.sh            # Mac/Linux 起動スクリプト（bash）
-├── index.md            # このドキュメント
-├── introduction.md     # Webサイト掲載用紹介文
+├── readme.md            # このドキュメント
 ├── static/
 │   ├── index.html      # フロントエンド SPA（バニラ JS）
 │   └── loading.html    # 起動待機画面（サーバー応答後に自動リダイレクト）
